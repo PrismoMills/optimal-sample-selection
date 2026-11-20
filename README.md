@@ -1,64 +1,85 @@
-# Optimal Sample Selection System
+<div align="center">
 
-**A sample covering tool built with Python, Tkinter and SQLite.**
+<h1>Optimal Sample Selection</h1>
+<p><strong>Cover every target combination with fewer sample groups.</strong></p>
+<p>A desktop tool for constructing, checking and comparing combinatorial covers.</p>
 
-The application selects sample groups that cover every required target combination while trying to reduce the number of groups. Users enter five parameters, run the solver and inspect verified results in a desktop interface. Each run is saved locally for later review.
+<p>
+<img alt="Python 3.10 or later" src="https://img.shields.io/badge/Python-3.10%2B-3776AB?logo=python&logoColor=white">
+<img alt="Tkinter desktop interface" src="https://img.shields.io/badge/UI-Tkinter-5A67D8">
+<img alt="Standard library only" src="https://img.shields.io/badge/Dependencies-Standard_library-428563">
+</p>
 
-## What you can do
+<p><a href="#the-problem-in-one-example">The problem</a> · <a href="#try-it">Try it</a> · <a href="#what-the-result-tells-you">Reading results</a> · <a href="#how-it-finds-a-cover">Algorithms</a></p>
 
-- Configure the sample population, selected sample count, output group size and coverage requirement.
-- Automatically draw distinct sample labels for a run.
-- Generate groups and verify that every target combination is covered.
-- Inspect the group count, theoretical lower bound and measured solve time.
-- Browse large results page by page.
-- View or delete a saved run, or clear all history after confirmation.
+</div>
 
-## How selection works
+---
 
-The program selects `n` distinct labels from `1` to `m`. Each output group contains `k` labels. Every `j`-element combination of the selected labels must share at least `s` elements with an output group. The objective is to use fewer output groups while preserving complete coverage.
+Suppose you have selected a set of samples and want to arrange them into smaller groups. Every required target combination needs enough overlap with at least one group. This application builds that cover, checks it, and tries to reduce the number of groups you need.
 
-| Parameter | Meaning | Supported range |
-| --- | --- | --- |
-| m | Total number of sample labels | 45 to 54 |
-| n | Number of labels selected for the run | 7 to 25 |
-| k | Labels in each output group | 4 to 7 |
-| j | Labels in each target combination | s <= j <= k <= n |
-| s | Minimum required intersection | 3 to j |
+## The problem in one example
 
-The solver combines symmetry constructions, greedy covering and time-bounded branch-and-bound. Small instances can search all candidates; larger instances use exact repairs of smaller residual covering problems. The search budget is three seconds, with additional time needed for coverage verification and output preparation.
+Choose **12 samples**, place them into groups of **6**, and require every **5-sample combination** to be fully contained in a group.
 
-For `(k,j,s)=(6,5,5)`, a small Witt design and its extension directly produce 132 groups at `n=12` and 245 groups at `n=13`. Both match the recursive counting lower bound.
+For this case, the app constructs **132 groups**. They cover all 792 five-sample targets and reach the theoretical lower bound.
 
-Every returned solution passes exhaustive coverage verification. **Proven optimal** appears when the group count matches a valid lower bound. Other results are feasible covers whose counts may exceed the optimum.
+| You choose | The app returns |
+| --- | --- |
+| Sample counts and overlap requirement | Selected sample labels and output groups |
+| A valid set of five parameters | A complete coverage check |
+| A run to inspect | Group count, lower bound and actual solve time |
 
-## Run locally
+## Try it
 
-Requirements are Python 3.10 or later with Tkinter. The application uses the Python standard library.
+Requires **Python 3.10+ with Tkinter**. Uses the Python standard library.
 
 ```sh
 python app.py
 ```
 
-1. Enter `m`, `n`, `k`, `j` and `s`, then select **Solve and Save**.
-2. Review the selected labels, output groups, lower bound and actual solve time.
-3. Select a run from **History** to view or delete it. Choose **Clear All** to delete all saved runs after confirmation.
+Enter the five parameters, select **Solve and Save**, and browse the result. Saved runs can be reopened, deleted individually or cleared together after confirmation.
 
-The application creates `results.db` beside the source files. Run labels use `m-n-k-j-s-run_id`.
+| Parameter | What it controls | Range |
+| --- | --- | --- |
+| `m` | Total sample labels, numbered 1 to m | 45–54 |
+| `n` | Distinct labels drawn for this run | 7–25 |
+| `k` | Labels in each output group | 4–7 |
+| `j` | Labels in each target combination | s ≤ j ≤ k ≤ n |
+| `s` | Minimum overlap with an output group | 3–j |
 
-## Project layout
+The program automatically draws the labels. Changing their values changes the labels shown in the output; the covering problem is determined by `n`, `k`, `j` and `s`.
 
-```text
-app.py       Desktop interface and SQLite history
-solver.py    Cover construction, optimization, lower bounds and verification
-results.db   Local run history, created at runtime and excluded from Git
-```
+## What the result tells you
 
-## Current scope
+**Coverage verified** means every j-element target shares at least s elements with an output group.
 
-The application is a desktop tool for exploring combinatorial sample coverage. Time-bounded results can vary between machines. Large inputs may return a larger initial cover when the search budget expires. Complete coverage is checked before results are returned, while optimality remains unproven for many parameter combinations.
+**Proven optimal** means the group count also matches a valid lower bound. A feasible cover can still have room for improvement.
 
-## Reference
+Two directly constructed cases reach their lower bounds:
 
-The small Witt design uses the projective-line description of the M12 design. Its extension to 13 points is constructed recursively from derived designs.
+| n | k | j | s | Groups | Result |
+| --- | --- | --- | --- | --- | --- |
+| 12 | 6 | 5 | 5 | 132 | Proven optimal |
+| 13 | 6 | 5 | 5 | 245 | Proven optimal |
 
-[The M12 Design, University of Bayreuth](https://mathe2.uni-bayreuth.de/discreta/M12/m12_design.html)
+Results are paginated and saved in `results.db` beside the application. Each run is labeled `m-n-k-j-s-run_id`.
+
+<details>
+<summary><strong>How it finds a cover</strong></summary>
+
+The solver combines cyclic and XOR symmetry constructions, greedy covering and time-bounded branch-and-bound. Small problems can search all candidates; larger problems improve a cover through exact repairs of smaller residual models.
+
+For `(k,j,s)=(6,5,5)`, the 12-point small Witt design and its 13-point extension produce the two results above. These are generated from the construction.
+
+The search budget is three seconds. Coverage verification and output preparation add to measured runtime. Large inputs may retain a larger initial cover when time runs out, and time-bounded results can vary between machines.
+
+`app.py` contains the Tkinter interface and SQLite history. `solver.py` constructs, improves and verifies covers. The generated database is excluded from Git.
+
+[Small Witt design construction, University of Bayreuth](https://mathe2.uni-bayreuth.de/discreta/M12/m12_design.html)
+
+</details>
+
+## Where it fits
+
+Use the app to explore sample covering problems, compare group counts and inspect valid solutions. Many parameter combinations still have unproven optimality.
